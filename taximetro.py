@@ -1,4 +1,5 @@
 import time
+import logging
 
 
 tarifa_parado = 0.02  #tarifa parada
@@ -6,7 +7,7 @@ tarifa_movimiento = 0.05  #tarifa movimiento
 estado_inicial = "parado"
 
 
-AYUDA = ("Taxímetro digital\n"
+AYUDA = ("\nTaxímetro digital\n"
                  "i  iniciar carrera (empieza PARADO)\n"
                  "p  el taxi está parado\n"
                  "m  el taxi está en movimiento\n"
@@ -19,6 +20,19 @@ AYUDA = ("Taxímetro digital\n"
 
 
 # Funciones auxiliares
+
+# Crear el logger: fuera de las funciones -> Obtener el objeto que registra los mensajes
+log = logging.getLogger("taximetro")
+
+# Definir la función de configuración: fuera de main
+def configurar_log():
+    logging.basicConfig( # 	Configurar dónde y cómo se registra el log
+        filename="taximetro.log", # El nombre del archivo donde se guardarán los registros
+        level=logging.INFO, # registra los mensajes INFO y todos los niveles más graves
+        encoding="utf-8",
+        format="%(asctime)s - %(levelname)s - %(message)s", # Fecha y hora | Nivel de gravedad | Contenido del mensaje
+        )
+
 
 def tarifa(estado):  #Responsabilidad: calcular la tarifa según el estado del taxi
     if estado == "parado":
@@ -41,8 +55,12 @@ def calcular_duracion(carrera):
     return duracion_total
 
 
+
 # Función principal
 def main():
+     #Ejecutar la configuración del logger al inicio de main
+     configurar_log()
+     log.info("Arranque del taxímetro")
 
      carrera = None
      print(AYUDA)
@@ -67,6 +85,7 @@ def main():
                 "importe": 0.00}
             carrera ["inicio"]= carrera["desde"] #registra el instante de inicio de la carrera
             print(f"Carrera iniciada. El taxi está {carrera['estado'].upper()}.\n")
+            log.info("Carrera iniciada")
         elif instruccion == "p" or instruccion == "m":
             estado_solicitado = "parado" if instruccion == "p" else "en movimiento"
             if carrera is None:
@@ -83,6 +102,7 @@ def main():
                       f"Duración del viaje: {duracion:.2f} segundos.\n"
                       f"El importe acumulado es: {carrera['importe']:.2f} €.\n"
                     )
+                log.info("Cambio de estado a %s (%.2f €  acumulados).", carrera["estado"], carrera["importe"])
         elif instruccion == "f":
             if carrera is None:
                 print("No hay ninguna carrera en curso. Iniciala con 'i'.\n")
@@ -94,11 +114,14 @@ def main():
                       f"Duración del viaje: {duracion:.2f} segundos.\n"
                       f"Total a cobrar: {carrera['importe']:.2f} €.\n"
                       )
+                log.info("Carrera finalizada: %.2f €.", carrera["importe"])
                 carrera = None  # Reinicia la carrera
             
         else:
             print("Orden desconocida. Escribe 'a' para ver la ayuda.")
-     print("¡Hasta luego!")   
+            log.warning("Orden desconocida: %r", instruccion)  # %: Es donde se insertará un valor | r: Muestra la representación del objeto y aparecen las comillas ' ' | instruccion: valor a insertar
+     print("¡Hasta luego!")
+     log.info("Cierre del taxímetro")   
      
 
 
