@@ -1,9 +1,24 @@
 import time
 import logging
+import json
+from pathlib import Path
 
 
-tarifa_parado = 0.02  #tarifa parada
-tarifa_movimiento = 0.05  #tarifa movimiento
+# Rutas del proyecto
+CARPETA = Path(__file__).parent
+CONFIG = CARPETA / "config.json"
+LOG = CARPETA / "taximetro.log"
+
+# Tarifas de respaldo
+TARIFAS_POR_DEFECTO= {
+  "tarifa_parado": 0.02,
+  "tarifa_movimiento": 0.05
+    }
+
+# Crear el logger: fuera de las funciones -> Obtener el objeto que registra los mensajes
+log = logging.getLogger("taximetro")
+
+
 estado_inicial = "parado"
 
 
@@ -21,9 +36,6 @@ AYUDA = ("\nTaxímetro digital\n"
 
 # Funciones auxiliares
 
-# Crear el logger: fuera de las funciones -> Obtener el objeto que registra los mensajes
-log = logging.getLogger("taximetro")
-
 # Definir la función de configuración: fuera de main
 def configurar_log():
     logging.basicConfig( # 	Configurar dónde y cómo se registra el log
@@ -33,20 +45,41 @@ def configurar_log():
         format="%(asctime)s - %(levelname)s - %(message)s", # Fecha y hora | Nivel de gravedad | Contenido del mensaje
         )
 
+def cargar_tarifas(ruta=CONFIG):
+    try:
+        datos = json.loads(ruta.read_text(encoding="utf-8")) # json.loass: interpreta ese texto y lo convierte en un objeto de Python | ruta.read_text() lee el contenido del archivo como texto.
+        # datos ahora es un diccionario con el contenido del json
 
-def tarifa(estado):  #Responsabilidad: calcular la tarifa según el estado del taxi
+        tarifas_json = {
+            "tarifa_parado": float(datos["tarifa_parado"]),
+            "tarifa_movimiento": float(datos["tarifa_movimiento"])
+        }
+
+        log.info("Tarifas cargadas de %s: %s", ruta, tarifas_json)
+        return tarifas_json # el diccionario cargado, no tiene un nombre. Éste se asigna en el main cuando llamamos a esta funcion.
+
+    except (OSError, ValueError, KeyError) as error:
+        log.warning(
+            "No se pudo leer %s (%s); uso tarifas por defecto",
+            ruta,
+            error
+        )
+        return dict(TARIFAS_POR_DEFECTO) #Devolvemos una copia para proteger el diccionario original
+        # el diccionario cargado, no tiene un nombre. Éste se asigna en el main cuando llamamos a esta funcion.
+
+def tarifa(estado, tarifas):  # Responsabilidad: calcular la tarifa según el estado del taxi
     if estado == "parado":
-        return tarifa_parado 
-    elif estado == "en movimiento": 
-        return tarifa_movimiento 
+        return tarifas["tarifa_parado"]
+    elif estado == "en movimiento":
+        return tarifas["tarifa_movimiento"]
     else:
         return 0.0
 
 
-def cerrar_tramo(carrera):
+def cerrar_tramo(carrera, tarifas):
     hasta = time.monotonic()
     tramo = hasta - carrera["desde"]
-    carrera["importe"] += tramo * tarifa(carrera["estado"])
+    carrera["importe"] += tramo * tarifa(carrera["estado"], tarifas)
     carrera["desde"] = hasta
     return carrera
 
@@ -62,6 +95,7 @@ def main():
      configurar_log()
      log.info("Arranque del taxímetro")
 
+     tarifas = cargar_tarifas()
      carrera = None
      print(AYUDA)
      
@@ -95,7 +129,7 @@ def main():
                 print(f"El taxi ya estaba {estado_solicitado.upper()}.\n")
                  
             else:
-                carrera = cerrar_tramo(carrera)
+                carrera = cerrar_tramo(carrera, tarifas)
                 carrera["estado"] = estado_solicitado
                 duracion = calcular_duracion(carrera)
                 print(f"El taxi está {carrera['estado'].upper()}.\n"
@@ -108,7 +142,7 @@ def main():
                 print("No hay ninguna carrera en curso. Iniciala con 'i'.\n")
                 continue #vuelve al inicio del bucle 
             else:
-                carrera = cerrar_tramo(carrera)
+                carrera = cerrar_tramo(carrera, tarifas)
                 duracion = calcular_duracion(carrera)
                 print(f"Carrera finalizada.\n"
                       f"Duración del viaje: {duracion:.2f} segundos.\n"
