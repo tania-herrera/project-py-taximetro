@@ -1,124 +1,111 @@
 import time
 
-antes = time.monotonic()
-input("Escribe tu nombre: ")
-despues = time.monotonic()
-print(f"Tiempo transcurrido: {despues - antes:.2f} segundos")
+
+tarifa_parado = 0.02  #tarifa parada
+tarifa_movimiento = 0.05  #tarifa movimiento
+estado_inicial = "parado"
+
+
+AYUDA = ("Taxímetro digital\n"
+                 "i  iniciar carrera (empieza PARADO)\n"
+                 "p  el taxi está parado\n"
+                 "m  el taxi está en movimiento\n"
+                 "f  finalizar la carrera y ver el total\n"
+                 "a  ver esta ayuda\n"
+                 "s  salir\n")
 
 
 
 
 
-tp = 0.02  #tarifa parado
-tm = 0.05  #tarifa movimiento
+# Funciones auxiliares
 
-def tarifa_cliente(i, p, m, f):
-    carrera = input("Introduce una letra: \n"
-    "i = inicio\t"
-    "p = parado\t"
-    "m = movimiento\t"
-    "f = finaliza\n" \
-    "a = ayuda\t"
-    "s = salir\n").lower()
-
-    estado_actual = 0
-    inicio_tramo = 0
-    importe_acumulado = 0.0
-
-    """Consultar el instante actual.
-
-
-
-Calcular el tiempo transcurrido desde el inicio del tramo.
-
-
-
-Aplicar la tarifa correspondiente al estado anterior.
-
-
-
-Añadir el importe al acumulado.
-
-
-
-Actualizar el estado.
-
-
-
-Registrar el nuevo inicio de tramo.
-
-Evolución de inicio_tramo
-1. Minuto 0
-   
-   Comienza la carrera.
-   
-   inicio_tramo = minuto 0.
-2. Minuto 4
-   
-   Cambia a parada.
-   
-   Cierras movimiento y actualizas inicio_tramo al minuto 4.
-3. Minuto 7
-   
-   Cambia a movimiento.
-   
-   Cierras parada y actualizas inicio_tramo al minuto 7.
-4. Minuto 12
-   
-   Finaliza.
-   
-   Cierras el último tramo y calculas el importe definitivo."""
-
-   
-    while carrera != "s":
-            if carrera == "i":
-                i = time.monotonic()
-                print("Carrera iniciada")           
-            elif carrera == "p":
-                p = time.monotonic() 
-                print("tramo parado") 
-            elif carrera == "m":
-                m = time.monotonic()
-                print("tramo en movimiento")
-            continue
-            if carrera == "f":
-                f = time.monotonic()
-                break
-            print("¡Carrera finalizada!")
-
-    def calcular_tarifa(t):
-        
-
-        calculo = tp * i 
-
-
-
-    def calcular_tiempo
-        if edad < 12:
-            return 4.0
-        else:
-            return 7.5
-    tarifa_parado = 0.02
-    tarifa_movimiento = 0.05
-    if edad < 12:
-        return 4.0
+def tarifa(estado):  #Responsabilidad: calcular la tarifa según el estado del taxi
+    if estado == "parado":
+        return tarifa_parado 
+    elif estado == "en movimiento": 
+        return tarifa_movimiento 
     else:
-        return 7.5
-    carrera = input("Introduce una letra: \n").lower()
+        return 0.0
 
+
+def cerrar_tramo(carrera):
+    hasta = time.monotonic()
+    tramo = hasta - carrera["desde"]
+    carrera["importe"] += tramo * tarifa(carrera["estado"])
+    carrera["desde"] = hasta
+    return carrera
+
+def calcular_duracion(carrera):
+    duracion_total = time.monotonic() - carrera["inicio"]
+    return duracion_total
+
+
+# Función principal
+def main():
+
+     carrera = None
+     print(AYUDA)
+     
+     while True:
+        instruccion = input("Introduce una letra: \n" \
+             "> ").strip().lower()
+        if instruccion == "s":
+            if carrera is not None:
+                print("Hay una carrera en curso. Finalizala con 'f' antes de salir.\n")
+                continue #vuelve al inicio del bucle
+            break
+        elif instruccion == "a":
+            print(AYUDA)
+        elif instruccion == "i":
+            if carrera is not None:
+                print("Ya hay una carrera en curso. Finalizala con 'f'.\n")
+                continue #vuelve al inicio del bucle
+            carrera = {
+                "estado": estado_inicial, 
+                "desde": time.monotonic(), #no puede ser una variable externa porque el tiempo iniciaría al ejecutar el programa y no al iniciar la carrera.
+                "importe": 0.00}
+            carrera ["inicio"]= carrera["desde"] #registra el instante de inicio de la carrera
+            print(f"Carrera iniciada. El taxi está {carrera['estado'].upper()}.\n")
+        elif instruccion == "p" or instruccion == "m":
+            estado_solicitado = "parado" if instruccion == "p" else "en movimiento"
+            if carrera is None:
+                print("No hay ninguna carrera en curso. Iniciala con 'i'.\n")
+                continue #vuelve al inicio del bucle 
+            elif carrera["estado"] == estado_solicitado:
+                print(f"El taxi ya estaba {estado_solicitado.upper()}.\n")
+                 
+            else:
+                carrera = cerrar_tramo(carrera)
+                carrera["estado"] = estado_solicitado
+                duracion = calcular_duracion(carrera)
+                print(f"El taxi está {carrera['estado'].upper()}.\n"
+                      f"Duración del viaje: {duracion:.2f} segundos.\n"
+                      f"El importe acumulado es: {carrera['importe']:.2f} €.\n"
+                    )
+        elif instruccion == "f":
+            if carrera is None:
+                print("No hay ninguna carrera en curso. Iniciala con 'i'.\n")
+                continue #vuelve al inicio del bucle 
+            else:
+                carrera = cerrar_tramo(carrera)
+                duracion = calcular_duracion(carrera)
+                print(f"Carrera finalizada.\n"
+                      f"Duración del viaje: {duracion:.2f} segundos.\n"
+                      f"Total a cobrar: {carrera['importe']:.2f} €.\n"
+                      )
+                carrera = None  # Reinicia la carrera
+            
+        else:
+            print("Orden desconocida. Escribe 'a' para ver la ayuda.")
+     print("¡Hasta luego!")   
+     
+
+
+     
     
-
-if entrada == "c":
-    print("Un café")
-elif entrada == "t":
-    print("Un té")
-else:
-    print("No lo tenemos")
-
-    print(f"El precio total de 3 cafés es: {total_cafes:.2f} €")
-
-edad = int(input("Ingrese su edad: "))
-costo = tarifa_cliente(inicio, finaliza)
-print(f"El costo de la entrada es: {costo:.1f}€")
-
     
+    
+# Punto de entrada
+if __name__ == "__main__":
+    main()
