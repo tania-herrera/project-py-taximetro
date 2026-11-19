@@ -2,12 +2,14 @@ import time
 import logging
 import json
 from pathlib import Path
-
+import csv
+from datetime import datetime
 
 # Rutas del proyecto
 CARPETA = Path(__file__).parent
 CONFIG = CARPETA / "config.json"
 LOG = CARPETA / "taximetro.log"
+HISTORIAL = CARPETA / "historial.csv"
 
 # Tarifas de respaldo
 TARIFAS_POR_DEFECTO= {
@@ -67,6 +69,22 @@ def cargar_tarifas(ruta=CONFIG):
         return dict(TARIFAS_POR_DEFECTO) #Devolvemos una copia para proteger el diccionario original
         # el diccionario cargado, no tiene un nombre. Éste se asigna en el main cuando llamamos a esta funcion.
 
+def guardar_carrera(inicio, duracion, importe, ruta=HISTORIAL): # Responsabilidad: guardar una carrera en el CSV
+    existe = ruta.exists()
+
+    with open(ruta, "a", newline="", encoding="utf-8") as fichero:
+        escritor = csv.writer(fichero)
+
+        if not existe:
+            escritor.writerow(["fecha", "hora", "duracion_s", "importe"])
+
+        escritor.writerow([
+            inicio.strftime("%Y-%m-%d"),
+            inicio.strftime("%H:%M:%S"),
+            round(duracion),
+            f"{importe:.2f}"
+        ])
+
 def tarifa(estado, tarifas):  # Responsabilidad: calcular la tarifa según el estado del taxi
     if estado == "parado":
         return tarifas["tarifa_parado"]
@@ -78,13 +96,13 @@ def tarifa(estado, tarifas):  # Responsabilidad: calcular la tarifa según el es
 
 def cerrar_tramo(carrera, tarifas):
     hasta = time.monotonic()
-    tramo = hasta - carrera["desde"]
+    tramo = hasta - carrera["ultimo_tramo"]
     carrera["importe"] += tramo * tarifa(carrera["estado"], tarifas)
-    carrera["desde"] = hasta
+    carrera["ultimo_tramo"] = hasta
     return carrera
 
 def calcular_duracion(carrera):
-    duracion_total = time.monotonic() - carrera["inicio"]
+    duracion_total = time.monotonic() - carrera["inicio_mono"]
     return duracion_total
 
 
@@ -113,11 +131,14 @@ def main():
             if carrera is not None:
                 print("Ya hay una carrera en curso. Finalizala con 'f'.\n")
                 continue #vuelve al inicio del bucle
+            ahora = time.monotonic()
             carrera = {
                 "estado": estado_inicial, 
-                "desde": time.monotonic(), #no puede ser una variable externa porque el tiempo iniciaría al ejecutar el programa y no al iniciar la carrera.
+                "inicio": datetime.now(),
+                "inicio_mono": ahora, #no puede ser una variable externa porque el tiempo iniciaría al ejecutar el programa y no al iniciar la carrera.
+                "ultimo_tramo": ahora,
                 "importe": 0.00}
-            carrera ["inicio"]= carrera["desde"] #registra el instante de inicio de la carrera
+            
             print(f"Carrera iniciada. El taxi está {carrera['estado'].upper()}.\n")
             log.info("Carrera iniciada")
         elif instruccion == "p" or instruccion == "m":
@@ -148,7 +169,14 @@ def main():
                       f"Duración del viaje: {duracion:.2f} segundos.\n"
                       f"Total a cobrar: {carrera['importe']:.2f} €.\n"
                       )
-                log.info("Carrera finalizada: %.2f €.", carrera["importe"])
+                log.info("Carrera guardada: %d s, %.2f €",
+                    round(duracion),
+                    carrera["importe"])
+                guardar_carrera(
+                    carrera["inicio"],
+                    duracion,
+                    carrera["importe"]
+                )
                 carrera = None  # Reinicia la carrera
             
         else:
