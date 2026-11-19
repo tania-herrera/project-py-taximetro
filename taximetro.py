@@ -108,7 +108,7 @@ def importe_tramo(segundos, estado, tarifas):
         raise ValueError("Los segundos no pueden ser negativos")
     if estado == "parado":
         precio = tarifas["tarifa_parado"]
-    elif estado == "en movimiento":
+    elif estado == "movimiento":
         precio = tarifas["tarifa_movimiento"]
     else:
         precio = 0.0
@@ -187,7 +187,7 @@ def main():
             print(f"Carrera iniciada. El taxi está {carrera['estado'].upper()}.\n")
             log.info("Carrera iniciada")
         elif instruccion == "p" or instruccion == "m":
-            estado_solicitado = "parado" if instruccion == "p" else "en movimiento"
+            estado_solicitado = "parado" if instruccion == "p" else "movimiento"
             if carrera is None:
                 print("No hay ninguna carrera en curso. Iniciala con 'i'.\n")
                 continue #vuelve al inicio del bucle 
