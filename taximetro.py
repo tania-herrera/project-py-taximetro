@@ -103,19 +103,25 @@ def carreras_de_hoy(ruta=HISTORIAL):
     return carreras
 
 
-def tarifa(estado, tarifas):  # Responsabilidad: calcular la tarifa según el estado del taxi
+def importe_tramo(segundos, estado, tarifas):
+    if segundos < 0:
+        raise ValueError("Los segundos no pueden ser negativos")
     if estado == "parado":
-        return tarifas["tarifa_parado"]
+        precio = tarifas["tarifa_parado"]
     elif estado == "en movimiento":
-        return tarifas["tarifa_movimiento"]
+        precio = tarifas["tarifa_movimiento"]
     else:
-        return 0.0
-
+        precio = 0.0
+    return segundos * precio
+    
 
 def cerrar_tramo(carrera, tarifas):
     hasta = time.monotonic()
     tramo = hasta - carrera["ultimo_tramo"]
-    carrera["importe"] += tramo * tarifa(carrera["estado"], tarifas)
+    carrera["importe"] += importe_tramo(
+        tramo,
+        carrera["estado"],
+        tarifas)
     carrera["ultimo_tramo"] = hasta
     return carrera
 
