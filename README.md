@@ -77,3 +77,136 @@ Al finalizar, se muestra el importe total en euros con dos decimales y la duraci
 Esta entrega implementa el MVP correspondiente a las historias de usuario US-01, US-02, US-03 y US-04.
 
 Las funcionalidades de registro de operaciones, almacenamiento del histórico, configuración externa de tarifas y autenticación quedan fuera del alcance de esta primera fase y se contemplan en las siguientes entregas.
+
+---
+
+## Fase 2 — Observabilidad, persistencia y pruebas (US-05, US-06 y US-07)
+
+En esta fase se incorporan mejoras para registrar la actividad del programa, configurar las tarifas externamente, almacenar las carreras y comprobar automáticamente la lógica de cálculo.
+
+### 1. Configuración de tarifas mediante JSON
+
+Las tarifas se encuentran en el archivo `config.json`, situado junto a `taximetro.py`.
+
+```json
+{
+  "tarifa_parado": 0.02,
+  "tarifa_movimiento": 0.05
+}
+```
+
+Para cambiar una tarifa:
+
+1. Abre `config.json`.
+2. Modifica el valor correspondiente, manteniendo la estructura y el formato JSON.
+3. Guarda el archivo.
+4. Reinicia el programa para que cargue los nuevos valores.
+
+Las tarifas se cargan una sola vez al arrancar el taxímetro. Por tanto, los cambios se aplican a las carreras iniciadas después de reiniciar el programa.
+
+**Tarifas de respaldo:** si el archivo no existe, está mal formado o falta alguna de las claves necesarias, el programa registra una advertencia y utiliza las tarifas predeterminadas definidas en `TARIFAS_POR_DEFECTO`. Así puede continuar funcionando sin que un problema de configuración interrumpa su ejecución.
+
+### 2. Almacenamiento del histórico de carreras
+
+Las carreras finalizadas se guardan en el archivo `historial.csv`, situado junto a `taximetro.py`.
+
+Cada carrera añade una fila con los siguientes datos:
+
+| Campo | Contenido |
+|---|---|
+| `fecha` | Fecha de inicio de la carrera. |
+| `hora` | Hora de inicio de la carrera. |
+| `duracion_s` | Duración en segundos, redondeada a un número entero. |
+| `importe` | Importe total de la carrera, con dos decimales. |
+
+El archivo se crea automáticamente cuando se guarda la primera carrera. La cabecera se escribe una sola vez y las siguientes carreras se añaden al final, sin sobrescribir los registros anteriores.
+
+### 3. Consulta de las carreras del día
+
+La instrucción `h` permite consultar desde la terminal las carreras registradas durante el día actual.
+
+Muestra la hora de inicio, la duración, el importe de cada carrera y el importe total acumulado del día.
+
+Si no hay carreras registradas para la fecha actual, muestra un mensaje indicándolo.
+
+### 4. Registro de eventos mediante Logging
+
+El programa utiliza el módulo `logging` de Python para registrar los eventos relevantes de su ejecución en `taximetro.log`.
+
+Se utilizan los niveles:
+
+- `INFO`: para eventos normales, como el arranque, el inicio de una carrera, los cambios de estado y el cierre del programa.
+- `WARNING`: para situaciones inesperadas que no interrumpen la ejecución, como introducir una orden desconocida o no poder cargar el archivo de tarifas.
+
+El archivo permite consultar lo ocurrido durante la ejecución, incluyendo la fecha, la hora y el nivel de cada mensaje.
+
+**Consultar el log en tiempo real**
+
+Desde una segunda terminal, situada en la carpeta del proyecto, ejecuta:
+
+```bash
+tail -f taximetro.log
+```
+
+Este comando muestra las nuevas líneas del archivo a medida que se escriben. Para dejar de seguirlo, pulsa `Ctrl + C`.
+
+### 5. Pruebas automatizadas con Pytest
+
+El proyecto incorpora pruebas automatizadas para comprobar la función `importe_tramo()` sin necesidad de ejecutar una carrera completa.
+
+**Preparación del entorno**
+
+Desde la carpeta del proyecto, crea un entorno virtual:
+
+```bash
+python -m venv .venv
+```
+
+En Git Bash, actívalo con:
+
+```bash
+source .venv/Scripts/activate
+```
+
+Instala pytest:
+
+```bash
+python -m pip install pytest
+```
+
+Comprueba la instalación:
+
+```bash
+python -m pytest --version
+```
+
+**Ejecución de las pruebas**
+
+Para ejecutar todos los tests:
+
+```bash
+python -m pytest
+```
+
+Para mostrar el nombre de cada test y su resultado:
+
+```bash
+python -m pytest -v
+```
+
+Los tests de `test_taximetro.py` comprueban:
+
+- El cálculo de un tramo de 10 segundos en estado parado.
+- El cálculo de un tramo de 10 segundos en movimiento.
+- La generación de un `ValueError` cuando la duración es negativa.
+- La suma de los importes de una carrera con tramos mixtos.
+
+Las pruebas utilizan `pytest.approx()` para comparar importes decimales con una tolerancia adecuada.
+
+**Resultado esperado:** cuatro pruebas superadas (`4 passed`).
+
+## Alcance de la fase 1
+
+La primera entrega implementa el MVP correspondiente a las historias de usuario US-01, US-02, US-03 y US-04.
+
+Las funcionalidades de registro de operaciones, almacenamiento del histórico, configuración externa de tarifas y autenticación quedaban fuera del alcance de esa primera fase y se contemplaban en las siguientes entregas.
