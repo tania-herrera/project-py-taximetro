@@ -29,6 +29,7 @@ AYUDA = ("\nTaxímetro digital\n"
                  "p  el taxi está parado\n"
                  "m  el taxi está en movimiento\n"
                  "f  finalizar la carrera y ver el total\n"
+                 "h historial de carreras de hoy\n"
                  "a  ver esta ayuda\n"
                  "s  salir\n")
 
@@ -85,6 +86,23 @@ def guardar_carrera(inicio, duracion, importe, ruta=HISTORIAL): # Responsabilida
             f"{importe:.2f}"
         ])
 
+def carreras_de_hoy(ruta=HISTORIAL):
+    if not ruta.exists():
+        return []
+
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    carreras = []
+
+    with open(ruta, "r", newline="", encoding="utf-8") as fichero:
+        lector = csv.DictReader(fichero) #DictReader utiliza la primera fila del CSV como claves de los diccionarios.
+
+        for fila in lector:
+            if fila["fecha"] == hoy:
+                carreras.append(fila)
+
+    return carreras
+
+
 def tarifa(estado, tarifas):  # Responsabilidad: calcular la tarifa según el estado del taxi
     if estado == "parado":
         return tarifas["tarifa_parado"]
@@ -127,6 +145,27 @@ def main():
             break
         elif instruccion == "a":
             print(AYUDA)
+
+        elif instruccion == "h":
+            historial_hoy= carreras_de_hoy()
+            if historial_hoy:
+                total_dia = 0.0
+                for i in historial_hoy:
+                    hora = i["hora"]
+                    duracion = int(i["duracion_s"])
+                    importe = float(i["importe"])
+                    total_dia += importe
+
+                    print(
+                        f"  {hora}  "
+                        f"{duracion:>5} s,  "
+                        f"{importe:>8.2f} €"
+                    )
+
+                print(f"  Total del día: {total_dia:.2f} €\n")
+            else:
+                print ("Hoy no hay carreras registradas.\n")    
+        
         elif instruccion == "i":
             if carrera is not None:
                 print("Ya hay una carrera en curso. Finalizala con 'f'.\n")
@@ -138,7 +177,7 @@ def main():
                 "inicio_mono": ahora, #no puede ser una variable externa porque el tiempo iniciaría al ejecutar el programa y no al iniciar la carrera.
                 "ultimo_tramo": ahora,
                 "importe": 0.00}
-            
+        
             print(f"Carrera iniciada. El taxi está {carrera['estado'].upper()}.\n")
             log.info("Carrera iniciada")
         elif instruccion == "p" or instruccion == "m":
